@@ -1,167 +1,167 @@
 # pm-skill
 
-Claude Code skill for [projectmanager](https://github.com/1359484419/projectmanager) — manage tasks, sprints, and generate daily/weekly reports via MCP.
+[projectmanager](https://github.com/1359484419/projectmanager) 的 Claude Code skill —— 通过 MCP 协议管理任务、Sprint，生成日报/周报。
 
-## Prerequisites
+## 前置条件
 
-- A running **projectmanager** instance (self-hosted)
-- **Claude Code** (CLI / Desktop / Web) or any MCP-compatible client (Cursor, Windsurf, etc.)
+- 一个运行中的 **projectmanager** 实例（自托管）
+- **Claude Code**（CLI / 桌面版 / 网页版）或任意支持 MCP 的客户端（Cursor、Windsurf 等）
 
-## Installation
+## 安装
 
-### Step 1: Generate PAT (Personal Access Token)
+### 第一步：生成 PAT（个人访问令牌）
 
-1. Log in to your projectmanager Web UI
-2. Click your avatar (top-right) → **Settings**
-3. Go to **API Tokens** section
-4. Enter a token name, select the tenant → click **Generate**
-5. Copy the token immediately (starts with `pmt_`, shown only once)
+1. 登录 projectmanager 网页端
+2. 点击右上角头像 → **设置**
+3. 找到 **API 令牌** 区域
+4. 输入令牌名称，选择所属租户 → 点击 **生成**
+5. 立即复制令牌（以 `pmt_` 开头，仅显示一次）
 
-### Step 2: Register MCP Server
+### 第二步：注册 MCP Server
 
-**Claude Code:**
+**Claude Code：**
 
 ```bash
-claude mcp add --transport http pm https://<your-domain>/mcp \
-  --header "Authorization: Bearer pmt_<your-token>"
+claude mcp add --transport http pm https://<你的域名>/mcp \
+  --header "Authorization: Bearer pmt_<你的令牌>"
 ```
 
-**Other MCP clients** (Cursor, Windsurf, etc.): add the following to your MCP config (refer to `mcp-config.example.json`):
+**其他 MCP 客户端**（Cursor、Windsurf 等）：将以下内容添加到客户端的 MCP 配置中（参考 `mcp-config.example.json`）：
 
 ```json
 {
   "mcpServers": {
     "pm": {
       "type": "http",
-      "url": "https://<your-domain>/mcp",
+      "url": "https://<你的域名>/mcp",
       "headers": {
-        "Authorization": "Bearer pmt_<your-token>"
+        "Authorization": "Bearer pmt_<你的令牌>"
       }
     }
   }
 }
 ```
 
-### Step 3: Install Skill
+### 第三步：安装 Skill
 
 ```bash
 claude skill add --url https://github.com/1359484419/pm-skill
 ```
 
-Or manually: clone this repo and copy `SKILL.md` into your project's `.claude/skills/` directory.
+或手动安装：克隆本仓库，将 `SKILL.md` 复制到你项目的 `.claude/skills/` 目录下。
 
-### Step 4: Verify
+### 第四步：验证
 
-Start a new Claude Code session and say:
+启动一个新的 Claude Code 会话，输入：
 
-> list my projects
+> 列出项目
 
-Claude should call `list_projects` and return your project list. If it works, you're all set.
+Claude 会调用 `list_projects` 并返回你的项目列表。如果看到结果，说明安装成功。
 
-## Available Tools
+## 可用工具
 
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `list_projects` | — | List all projects (key, name) in your tenant |
-| `list_sprints` | `projectKey` | Show active / next / recent (closed) sprints |
-| `list_epics` | `projectKey` | List epics (id, name, quarter, status) |
-| `list_my_tasks` | `projectKey`, `sprint?` (current/previous) | My tasks in a sprint |
-| `create_tasks` | `projectKey`, `target`, `tasks[]` | Batch create up to 20 tasks |
-| `update_task_status` | `taskSeq`, `status` | Update task status |
+| 工具 | 参数 | 说明 |
+|------|------|------|
+| `list_projects` | — | 列出租户下所有项目（key、名称） |
+| `list_sprints` | `projectKey` | 查看 active / next / 最近关闭的 Sprint |
+| `list_epics` | `projectKey` | 列出 Epic（id、名称、季度、状态） |
+| `list_my_tasks` | `projectKey`, `sprint?`（current/previous） | 我在某个 Sprint 的任务 |
+| `create_tasks` | `projectKey`, `target`, `tasks[]` | 批量创建任务（每次最多 20 条） |
+| `update_task_status` | `taskSeq`, `status` | 更新任务状态 |
 
-### Task Targets
+### 任务挂载目标
 
-| Target | Meaning |
-|--------|---------|
-| `current_sprint` | Add to the active sprint |
-| `next_sprint` | Add to the next planned sprint (auto-creates if needed) |
-| `backlog` | Add to backlog (no sprint) |
+| Target | 含义 |
+|--------|------|
+| `current_sprint` | 挂到当前活跃 Sprint |
+| `next_sprint` | 挂到下个 Sprint（不存在时自动创建） |
+| `backlog` | 放入待办（不挂 Sprint） |
 
-### Task Statuses
+### 任务状态流转
 
 `TODO` → `IN_PROGRESS` → `COMPLETED` → `DONE`
 
-## Usage Guide
+## 使用指南
 
-### Create Tasks from Work Description
+### 把工作整理成任务
 
-Tell Claude what you did, and ask it to organize into tasks:
+告诉 Claude 你做了什么，让它帮你整理成任务：
 
-> I fixed the login page redirect bug, added password validation to the signup form, and refactored the auth middleware. Put these in the current sprint.
+> 我今天修了登录页跳转的 bug，给注册表单加了密码校验，还重构了 auth 中间件。挂到当前 sprint。
 
-Claude will:
-1. Parse your description into structured tasks (type, title, points)
-2. Show you a summary table for confirmation
-3. After you confirm, call `create_tasks` and return the task IDs (e.g. `DEV-1`, `DEV-2`)
+Claude 会：
+1. 把你的描述拆分成结构化任务（类型、标题、故事点）
+2. 展示任务清单表格，等你确认
+3. 确认后调用 `create_tasks`，返回任务编号（如 `DEV-1`、`DEV-2`）
 
-### Update Task Status
+### 更新任务状态
 
-> DEV-1 is done
+> DEV-1 做完了
 
-Claude will call `update_task_status("DEV-1", "COMPLETED")`.
+Claude 会调用 `update_task_status("DEV-1", "COMPLETED")`。
 
-### Generate Daily Report
+### 生成日报
 
-> Write my daily report
+> 写日报
 
-Claude will fetch your current sprint tasks via `list_my_tasks`, group by status, and output:
+Claude 会通过 `list_my_tasks` 拉取当前 Sprint 任务，按状态分组输出：
 
 ```
-## Daily Report · 2026-07-07 · Your Name
+## 日报 · 2026-07-07 · 你的名字
 
-**Completed Today**
-- DEV-1 Fix login redirect bug (1pt)
+**今日完成**
+- DEV-1 修复登录跳转 bug（1pt）
 
-**In Progress**
-- DEV-2 Add password validation — 80% done
+**进行中**
+- DEV-2 注册表单密码校验 —— 完成 80%
 
-**Tomorrow**
-- DEV-3 Refactor auth middleware
+**待办 / 明日计划**
+- DEV-3 重构 auth 中间件
 
-**Blockers**
-- None
+**风险 / 阻塞**
+- 无
 ```
 
-### Generate Weekly Report
+### 生成周报
 
-> Write my weekly report
+> 写周报
 
-Claude will pull tasks from both current and previous sprints and summarize completed work, carryovers, and next week's plan.
+Claude 会拉取当前和上个 Sprint 的任务，汇总本周完成、结转、下周计划。
 
-### List My Tasks
+### 查看我的任务
 
-> What tasks do I have in this sprint?
+> 我这个 sprint 有什么任务？
 
-Claude will call `list_my_tasks` and display a formatted table.
+Claude 会调用 `list_my_tasks` 并以表格展示。
 
-### Other Examples
+### 更多用法
 
-| What you say | What happens |
-|---|---|
-| "List my projects" | `list_projects` → project table |
-| "Show sprints for DEV" | `list_sprints("DEV")` → active/next/recent |
-| "Put these in the next sprint" | `create_tasks(target=next_sprint)` |
-| "Move to backlog" | `create_tasks(target=backlog)` |
-| "DEV-3 is in progress" | `update_task_status("DEV-3", "IN_PROGRESS")` |
+| 你说的话 | Claude 的动作 |
+|----------|--------------|
+| "列出项目" | `list_projects` → 项目列表 |
+| "看看 DEV 的 sprint" | `list_sprints("DEV")` → active/next/recent |
+| "放到下个 sprint" | `create_tasks(target=next_sprint)` |
+| "先放 backlog" | `create_tasks(target=backlog)` |
+| "DEV-3 开始做了" | `update_task_status("DEV-3", "IN_PROGRESS")` |
 
-## File Structure
+## 文件结构
 
 ```
 pm-skill/
-├── README.md                  # This file
-├── SKILL.md                   # Skill definition (Claude reads this)
-├── mcp-config.example.json    # MCP client config template
-└── LICENSE                    # MIT
+├── README.md                  # 本文件
+├── SKILL.md                   # Skill 定义（Claude 读取此文件）
+├── mcp-config.example.json    # MCP 客户端配置模板
+└── LICENSE                    # MIT 协议
 ```
 
-## Troubleshooting
+## 常见问题
 
-| Problem | Solution |
-|---------|----------|
-| "Tool not found" | Make sure MCP server is registered: `claude mcp list` should show `pm` |
-| Connection refused | Check your projectmanager instance is running and the URL is correct |
-| 401 Unauthorized | Your PAT may be expired or revoked — generate a new one |
-| No projects returned | Verify the PAT is bound to the correct tenant |
+| 问题 | 解决方案 |
+|------|----------|
+| "Tool not found" | 确认 MCP server 已注册：`claude mcp list` 应显示 `pm` |
+| 连接被拒绝 | 检查 projectmanager 实例是否运行中，URL 是否正确 |
+| 401 未授权 | PAT 可能已过期或被撤销，重新生成一个 |
+| 返回空项目列表 | 确认 PAT 绑定了正确的租户 |
 
 ## License
 
